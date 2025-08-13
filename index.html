@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.39.0/umd/supabase.min.js"></script>
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200px 0;
+            }
+            100% {
+                background-position: calc(200px + 100%) 0;
+            }
+        }
+
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .animate-slideInRight {
+            animation: slideInRight 0.8s ease-out forwards;
+        }
+
+        .animate-pulse-custom {
+            animation: pulse 2s infinite;
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+            background-size: 200px 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
+        }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+        }
+
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-backdrop {
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            border-top: 3px solid #fbbf24;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hover-lift {
+            transition: all 0.3s ease;
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 animate-fadeInUp shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 gradient-bg rounded-full mx-auto mb-4 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-800">Admin Login</h2>
+                <p class="text-gray-600 mt-2">Please sign in to access the dashboard</p>
+            </div>
+            <form id="loginForm">
+                <div class="mb-6">
+                    <input type="email" id="loginEmail" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Email Address">
+                </div>
+                <div class="mb-6">
+                    <input type="password" id="loginPassword" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Password">
+                </div>
+                <button type="submit" id="loginBtn"
+                        class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <span id="loginBtnText">Sign In</span>
+                    <div id="loginSpinner" class="loading-spinner mx-auto hidden"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden">
+        <!-- Header -->
+        <header class="gradient-bg text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center py-6">
+                    <div class="flex items-center animate-fadeInUp">
+                        <div class="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-blue-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+                    </div>
+                    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors duration-300">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fadeInUp">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Cashiers</p>
+                            <p class="text-2xl font-bold text-gray-900" id="totalCashiers">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fadeInUp" style="animation-delay: 0.1s;">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Active Sessions</p>
+                            <p class="text-2xl font-bold text-gray-900" id="activeSessions">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fadeInUp" style="animation-delay: 0.2s;">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Today's Transactions</p>
+                            <p class="text-2xl font-bold text-gray-900" id="todayTransactions">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-lg p-6 hover-lift animate-fadeInUp" style="animation-delay: 0.3s;">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Revenue</p>
+                            <p class="text-2xl font-bold text-gray-900">$<span id="totalRevenue">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-4 mb-8">
+                <button id="addCashierBtn" class="gold-gradient text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300 animate-slideInRight">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Add Cashier
+                </button>
+                <button id="viewActivitiesBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300 animate-slideInRight" style="animation-delay: 0.1s;">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    View Activities
+                </button>
+                <button id="viewTransactionsBtn" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300 animate-slideInRight" style="animation-delay: 0.2s;">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    View Transactions
+                </button>
+            </div>
+
+            <!-- Cashiers List -->
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden animate-fadeInUp">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Cashiers</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cashier</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cashiersTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Dynamic content will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Cashier Modal -->
+    <div id="addCashierModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 animate-fadeInUp shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Add New Cashier</h3>
+                <button id="closeAddCashierModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="addCashierForm">
+                <div class="space-y-4">
+                    <input type="text" id="cashierName" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Full Name">
+                    <input type="email" id="cashierEmail" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Email Address">
+                    <input type="tel" id="cashierPhone" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Phone Number">
+                    <textarea id="cashierAddress" required
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                              placeholder="Address" rows="3"></textarea>
+                    <input type="text" id="cashierID" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                           placeholder="Cashier ID">
+                </div>
+                <div class="flex gap-4 mt-6">
+                    <button type="button" id="cancelAddCashier"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-semibold transition-colors duration-300">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveCashierBtn"
+                            class="flex-1 gold-gradient text-white py-3 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-300">
+                        <span id="saveCashierText">Save Cashier</span>
+                        <div id="saveCashierSpinner" class="loading-spinner mx-auto hidden"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activities Modal -->
+    <div id="activitiesModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 animate-fadeInUp shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Cashier Activities</h3>
+                <button id="closeActivitiesModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cashier</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activitiesTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Modal -->
+    <div id="transactionsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 modal-backdrop z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-8 max-w-4xl w-full mx-4 animate-fadeInUp shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Transactions</h3>
+                <button id="closeTransactionsModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cashier</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Dynamic content will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase Configuration
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        // Initialize Supabase client
+        let supabase;
+        
+        // Check if Supabase credentials are provided
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+            supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        // Mock data for demonstration (when Supabase is not configured)
+        let mockData = {
+            cashiers: [
+                {
+                    id: 1,
+                    name: 'John Doe',
+                    email: 'john@example.com',
+                    phone: '+1234567890',
+                    address: '123 Main St, City',
+                    cashier_id: 'CSH001',
+                    status: 'Active',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 2,
+                    name: 'Jane Smith',
+                    email: 'jane@example.com',
+                    phone: '+1987654321',
+                    address: '456 Oak Ave, Town',
+                    cashier_id: 'CSH002',
+                    status: 'Inactive',
+                    created_at: new Date().toISOString()
+                }
+            ],
+            activities: [
+                {
+                    id: 1,
+                    cashier_name: 'John Doe',
+                    activity: 'Login',
+                    timestamp: new Date().toISOString(),
+                    status: 'Success'
+                },
+                {
+                    id: 2,
+                    cashier_name: 'Jane Smith',
+                    activity: 'Logout',
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    status: 'Success'
+                }
+            ],
+            transactions: [
+                {
+                    id: 'TXN001',
+                    cashier_name: 'John Doe',
+                    amount: 150.00,
+                    date: new Date().toISOString(),
+                    status: 'Completed'
+                },
+                {
+                    id: 'TXN002',
+                    cashier_name: 'Jane Smith',
+                    amount: 75.50,
+                    date: new Date(Date.now() - 1800000).toISOString(),
+                    status: 'Completed'
+                }
+            ]
+        };
+
+        // DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const dashboard = document.getElementById('dashboard');
+        const loginForm = document.getElementById('loginForm');
+        const addCashierModal = document.getElementById('addCashierModal');
+        const activitiesModal = document.getElementById('activitiesModal');
+        const transactionsModal = document.getElementById('transactionsModal');
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show login modal on load
+            showLoginModal();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // If not using Supabase, show warning
+            if (!supabase) {
+                console.warn('Supabase not configured. Using mock data. Please update SUPABASE_URL and SUPABASE_ANON_KEY.');
+            }
+        });
+
+        function showLoginModal() {
+            loginModal.classList.remove('hidden');
+            dashboard.classList.add('hidden');
+        }
+
+        function hideDashboard() {
+            dashboard.classList.add('hidden');
+            loginModal.classList.remove('hidden');
+        }
+
+        function showDashboard() {
+            loginModal.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+            loadDashboardData();
+        }
+
+        function setupEventListeners() {
+            // Login form
+            loginForm.addEventListener('submit', handleLogin);
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+            
+            // Add cashier modal
+            document.getElementById('addCashierBtn').addEventListener('click', () => {
+                addCashierModal.classList.remove('hidden');
+            });
+            
+            document.getElementById('closeAddCashierModal').addEventListener('click', () => {
+                addCashierModal.classList.add('hidden');
+            });
+            
+            document.getElementById('cancelAddCashier').addEventListener('click', () => {
+                addCashierModal.classList.add('hidden');
+            });
+            
+            // Add cashier form
+            document.getElementById('addCashierForm').addEventListener('submit', handleAddCashier);
+            
+            // Activities modal
+            document.getElementById('viewActivitiesBtn').addEventListener('click', () => {
+                loadActivities();
+                activitiesModal.classList.remove('hidden');
+            });
+            
+            document.getElementById('closeActivitiesModal').addEventListener('click', () => {
+                activitiesModal.classList.add('hidden');
+            });
+            
+            // Transactions modal
+            document.getElementById('viewTransactionsBtn').addEventListener('click', () => {
+                loadTransactions();
+                transactionsModal.classList.remove('hidden');
+            });
+            
+            document.getElementById('closeTransactionsModal').addEventListener('click', () => {
+                transactionsModal.classList.add('hidden');
+            });
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginBtnText = document.getElementById('loginBtnText');
+            const loginSpinner = document.getElementById('loginSpinner');
+            
+            // Show loading state
+            loginBtnText.classList.add('hidden');
+            loginSpinner.classList.remove('hidden');
+            loginBtn.disabled = true;
+            
+            try {
+                if (supabase) {
+                    // Use Supabase authentication
+                    const { data, error } = await supabase.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    });
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                    
+                    showDashboard();
+                } else {
+                    // Mock authentication for demo
+                    setTimeout(() => {
+                        if (email === 'admin@example.com' && password === 'password') {
+                            showDashboard();
+                        } else {
+                            alert('Invalid credentials. Use admin@example.com / password for demo');
+                        }
+                        
+                        // Reset button state
+                        loginBtnText.classList.remove('hidden');
+                        loginSpinner.classList.add('hidden');
+                        loginBtn.disabled = false;
+                    }, 1500);
+                    return;
+                }
+            } catch (error) {
+                alert('Login failed: ' + error.message);
+            }
+            
+            // Reset button state
+            loginBtnText.classList.remove('hidden');
+            loginSpinner.classList.add('hidden');
+            loginBtn.disabled = false;
+        }
+
+        async function handleLogout() {
+            if (supabase) {
+                await supabase.auth.signOut();
+            }
+            hideDashboard();
+        }
+
+        async function handleAddCashier(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('cashierName').value;
+            const email = document.getElementById('cashierEmail').value;
+            const phone = document.getElementById('cashierPhone').value;
+            const address = document.getElementById('cashierAddress').value;
+            const cashierID = document.getElementById('cashierID').value;
+            
+            const saveBtn = document.getElementById('saveCashierBtn');
+            const saveBtnText = document.getElementById('saveCashierText');
+            const saveSpinner = document.getElementById('saveCashierSpinner');
+            
+            // Show loading state
+            saveBtnText.classList.add('hidden');
+            saveSpinner.classList.remove('hidden');
+            saveBtn.disabled = true;
+            
+            try {
+                if (supabase) {
+                    // Insert into Supabase
+                    const { data, error } = await supabase
+                        .from('cashiers')
+                        .insert([{
+                            name: name,
+                            email: email,
+                            phone: phone,
+                            address: address,
+                            cashier_id: cashierID,
+                            status: 'Active'
+                        }]);
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                } else {
+                    // Add to mock data
+                    const newCashier = {
+                        id: mockData.cashiers.length + 1,
+                        name: name,
+                        email: email,
+                        phone: phone,
+                        address: address,
+                        cashier_id: cashierID,
+                        status: 'Active',
+                        created_at: new Date().toISOString()
+                    };
+                    mockData.cashiers.push(newCashier);
+                }
+                
+                // Reset form and close modal
+                document.getElementById('addCashierForm').reset();
+                addCashierModal.classList.add('hidden');
+                
+                // Refresh dashboard data
+                loadDashboardData();
+                
+                // Show success animation
+                showSuccessNotification('Cashier added successfully!');
+                
+            } catch (error) {
+                alert('Error adding cashier: ' + error.message);
+            }
+            
+            // Reset button state
+            saveBtnText.classList.remove('hidden');
+            saveSpinner.classList.add('hidden');
+            saveBtn.disabled = false;
+        }
+
+        async function loadDashboardData() {
+            try {
+                let cashiers = [];
+                
+                if (supabase) {
+                    // Load from Supabase
+                    const { data, error } = await supabase
+                        .from('cashiers')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                    
+                    cashiers = data || [];
+                } else {
+                    // Use mock data
+                    cashiers = mockData.cashiers;
+                }
+                
+                // Update stats
+                document.getElementById('totalCashiers').textContent = cashiers.length;
+                document.getElementById('activeSessions').textContent = cashiers.filter(c => c.status === 'Active').length;
+                document.getElementById('todayTransactions').textContent = mockData.transactions.length;
+                document.getElementById('totalRevenue').textContent = mockData.transactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2);
+                
+                // Update cashiers table
+                updateCashiersTable(cashiers);
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+
+        function updateCashiersTable(cashiers) {
+            const tbody = document.getElementById('cashiersTableBody');
+            tbody.innerHTML = '';
+            
+            cashiers.forEach((cashier, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                row.style.animationDelay = `${index * 0.1}s`;
+                row.classList.add('animate-fadeInUp');
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span class="text-white font-semibold text-sm">${cashier.name.charAt(0)}</span>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${cashier.name}</div>
+                                <div class="text-sm text-gray-500">ID: ${cashier.cashier_id}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${cashier.email}</div>
+                        <div class="text-sm text-gray-500">${cashier.phone}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            cashier.status === 'Active' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                        }">
+                            ${cashier.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 mr-4 transition-colors duration-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button class="text-red-600 hover:text-red-900 transition-colors duration-200" onclick="deleteCashier(${cashier.id})">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        async function loadActivities() {
+            const tbody = document.getElementById('activitiesTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading activities...</td></tr>';
+            
+            try {
+                let activities = [];
+                
+                if (supabase) {
+                    // Load from Supabase
+                    const { data, error } = await supabase
+                        .from('cashier_activities')
+                        .select('*')
+                        .order('timestamp', { ascending: false })
+                        .limit(50);
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                    
+                    activities = data || [];
+                } else {
+                    // Use mock data
+                    activities = mockData.activities;
+                }
+                
+                tbody.innerHTML = '';
+                
+                activities.forEach((activity, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                    row.style.animationDelay = `${index * 0.05}s`;
+                    row.classList.add('animate-fadeInUp');
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${activity.cashier_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${activity.activity}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(activity.timestamp).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                activity.status === 'Success' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-red-100 text-red-800'
+                            }">
+                                ${activity.status}
+                            </span>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                if (activities.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No activities found</td></tr>';
+                }
+                
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Error loading activities</td></tr>';
+                console.error('Error loading activities:', error);
+            }
+        }
+
+        async function loadTransactions() {
+            const tbody = document.getElementById('transactionsTableBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">Loading transactions...</td></tr>';
+            
+            try {
+                let transactions = [];
+                
+                if (supabase) {
+                    // Load from Supabase
+                    const { data, error } = await supabase
+                        .from('transactions')
+                        .select('*')
+                        .order('date', { ascending: false })
+                        .limit(50);
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                    
+                    transactions = data || [];
+                } else {
+                    // Use mock data
+                    transactions = mockData.transactions;
+                }
+                
+                tbody.innerHTML = '';
+                
+                transactions.forEach((transaction, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                    row.style.animationDelay = `${index * 0.05}s`;
+                    row.classList.add('animate-fadeInUp');
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${transaction.id}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${transaction.cashier_name}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${transaction.amount.toFixed(2)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${new Date(transaction.date).toLocaleString()}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                transaction.status === 'Completed' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : transaction.status === 'Pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                            }">
+                                ${transaction.status}
+                            </span>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                if (transactions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No transactions found</td></tr>';
+                }
+                
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-red-500">Error loading transactions</td></tr>';
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        async function deleteCashier(cashierId) {
+            if (!confirm('Are you sure you want to delete this cashier?')) {
+                return;
+            }
+            
+            try {
+                if (supabase) {
+                    const { error } = await supabase
+                        .from('cashiers')
+                        .delete()
+                        .eq('id', cashierId);
+                    
+                    if (error) {
+                        throw new Error(error.message);
+                    }
+                } else {
+                    // Remove from mock data
+                    mockData.cashiers = mockData.cashiers.filter(c => c.id !== cashierId);
+                }
+                
+                // Refresh dashboard
+                loadDashboardData();
+                showSuccessNotification('Cashier deleted successfully!');
+                
+            } catch (error) {
+                alert('Error deleting cashier: ' + error.message);
+            }
+        }
+
+        function showSuccessNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-fadeInUp';
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    ${message}
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target === addCashierModal) {
+                addCashierModal.classList.add('hidden');
+            }
+            if (e.target === activitiesModal) {
+                activitiesModal.classList.add('hidden');
+            }
+            if (e.target === transactionsModal) {
+                transactionsModal.classList.add('hidden');
+            }
+        });
+
+        // Add some demo data periodically for live effect
+        if (!supabase) {
+            setInterval(() => {
+                // Simulate random activity
+                const activities = ['Login', 'Logout', 'Transaction', 'Break Start', 'Break End'];
+                const cashiers = ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson'];
+                
+                const newActivity = {
+                    id: mockData.activities.length + 1,
+                    cashier_name: cashiers[Math.floor(Math.random() * cashiers.length)],
+                    activity: activities[Math.floor(Math.random() * activities.length)],
+                    timestamp: new Date().toISOString(),
+                    status: 'Success'
+                };
+                
+                mockData.activities.unshift(newActivity);
+                
+                // Keep only last 50 activities
+                if (mockData.activities.length > 50) {
+                    mockData.activities = mockData.activities.slice(0, 50);
+                }
+                
+                // Update stats if dashboard is visible
+                if (!dashboard.classList.contains('hidden')) {
+                    document.getElementById('activeSessions').textContent = Math.floor(Math.random() * 5) + 1;
+                }
+            }, 30000); // Every 30 seconds
+        }
+    </script>
+</body>
+</html>
